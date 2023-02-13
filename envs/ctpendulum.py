@@ -21,7 +21,7 @@ class CTPendulum(BaseEnv):
         'render.modes' : ['human', 'rgb_array'],
         'video.frames_per_second' : 30
     }
-    def __init__(self, dt=0.1, device='cpu', obs_trans=True, obs_noise=0.0, ts_grid='fixed', solver='dopri8'):
+    def __init__(self, dt=0.1, x0=None, device='cpu', obs_trans=True, obs_noise=0.0, ts_grid='fixed', solver='dopri8'):
         name = 'pendulum'
         if obs_trans:
             state_action_names = ['cos_theta','sin_theta','velocity','action']
@@ -31,12 +31,13 @@ class CTPendulum(BaseEnv):
         # self.reward_range = [-17.0, 0.0] # for visualization
         super().__init__(dt, 2+obs_trans, 1, 2.0, obs_trans, name, \
             state_action_names, device, solver, obs_noise, ts_grid)
-        self.N0 = 3
-        self.Nexpseq = 0
-        self.g = 10.0
+        self.N0 = len(x0) if x0 is not None else 3
+        self.Nexpseq = 3
+        self.g = 9.81
         self.mass = 1.
         self.l = 1.
-        self.reset()
+        self.x0 = x0
+        self.reset(0)
 
     #################### environment specific ##################
     def extract_velocity(self,state):
@@ -68,10 +69,15 @@ class CTPendulum(BaseEnv):
         return torch.stack([theta*0.0, torch.ones_like(theta_dot)*3./(m*l**2)],-1)
 
     #################### override ##################
-    def reset(self):
-        low, high = np.array([-np.pi, -3]), np.array([np.pi, 3])
-        # low, high = np.array([-0.75*np.pi, -1]), np.array([-0.5*np.pi, 1])
-        self.state = self.np_random.uniform(low=low, high=high)
+    def reset(self, i=None):
+        if i is None:
+            low, high = np.array([-np.pi, -3]), np.array([np.pi, 3])
+            # low, high = np.array([-0.75*np.pi, -1]), np.array([-0.5*np.pi, 1])
+            self.state = self.np_random.uniform(low=low, high=high)
+        else:
+            if self.x0 is None:
+                raise Exception('Reset to x0 called without x0 defined.')
+            self.state = self.x0[i]
         return self.get_obs()
             
     def obs2state(self,obs):

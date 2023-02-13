@@ -90,7 +90,8 @@ class Dataset:
         idx = list(np.arange(0,self.N)) if idx is None else list(idx)
         T = int(H/self.dt) # convert sec to # data points
         idx = [item for sublist in nrep*[idx] for item in sublist]
-        t0s = torch.tensor(np.random.randint(0,1+self.T-T,len(idx)),dtype=torch.int32).to(self.device)
+        #t0s = torch.tensor(np.random.randint(0,1+self.T-T,len(idx)),dtype=torch.int32).to(self.device)
+        t0s = torch.tensor(np.zeros((len(idx),)),dtype=torch.int32).to(self.device)
         st_at_rt = torch.stack([self.D[seq_idx_,t0:t0+T] for t0,seq_idx_ in zip(t0s,idx)])
         st,at,rt = st_at_rt[:,:,:self.n], st_at_rt[:,:,self.n:self.n+self.m], st_at_rt[:,:,-1:]
         ts = torch.stack([self.ts[seq_idx_,t0:t0+T] for t0,seq_idx_ in zip(t0s,idx)])

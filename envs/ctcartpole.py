@@ -34,8 +34,8 @@ class CTCartpole(BaseEnv):
         # Angle at which to fail the episode
         self.theta_threshold_radians = theta_threshold_radians
         self.x_threshold = x_threshold
-        self.N0 = 5
-        self.Nexpseq = 2
+        self.N0 = 1
+        self.Nexpseq = 1
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -94,7 +94,7 @@ class CTCartpole(BaseEnv):
 
     #################### override ##################
     def reset(self):
-        rand_state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
+        rand_state = self.np_random.uniform(low=-0.0, high=0.0, size=(4,))
         if self.swing_up:
             rand_state[2] += np.pi
         self.state = rand_state
@@ -146,7 +146,8 @@ class CTCartpole(BaseEnv):
             err = ee_pos - torch.Tensor([0.0, self.length]).to(s.device)
             state_reward = -torch.sum(err**2,-1)
             velocity_reward = -torch.sum(xdot**2,-1) - torch.sum(thetadot**2,-1)
-            return (state_reward + self.vel_rew_const*velocity_reward).exp() # works superb
+            #return (state_reward + self.vel_rew_const*velocity_reward).exp() # works superb
+            return (state_reward + self.vel_rew_const*velocity_reward)
         else:  
             return ((cos_th>np.cos(self.theta_threshold_radians)) *
                     (x<self.x_threshold) * (x>-self.x_threshold)).float()

@@ -13,7 +13,7 @@ from ctrl.dataset import Dataset
 ##########################################################################################
 ######################################## PLOTTING ########################################
 ##########################################################################################
-def plot_model(ctrl, D, rep_buf=10, H=None, L=10, fname=None, verbose=False, savefig=True):
+def plot_model(ctrl, D: Dataset, rep_buf=10, H=None, L=10, fname=None, verbose=False, savefig=True):
     with torch.no_grad():
         if fname is None:
             fname = '{:s}-train.png'.format(ctrl.name)
@@ -116,7 +116,7 @@ def get_train_functions(dynamics):
     elif 'pets' in dynamics:
         return train_pets
 
-def train_loop(ctrl, D, fname, Nround, **kwargs):
+def train_loop(ctrl, D, fname, Nround, initial_states=[None],  **kwargs):
     H, L  = kwargs['H'], kwargs['L']
     verbose, print_times, N_pol_iter, Nexpseq = True, 10, 250, ctrl.env.Nexpseq
     dyn_tr_fnc = get_train_functions(ctrl.dynamics)
@@ -131,8 +131,9 @@ def train_loop(ctrl, D, fname, Nround, **kwargs):
         train_policy(ctrl, D, H=H, V_const=min(round/5.0,1), verbose=verbose, \
             Niter=N_pol_iter, L=L, save_fname=fname, print_times=print_times)
         # test the policy
-        Htest,Ntest,Tup = 30,10,int(3.0/ctrl.env.dt)
-        s0 = torch.stack([numpy_to_torch(ctrl.env.reset()) for _ in range(Ntest)]).to(ctrl.device) 
+        Htest,Ntest,Tup = 30, len(ctrl.env.x0), int(3.0/ctrl.env.dt)
+        # TODO: USE set of predefined initital states
+        s0 = torch.stack([numpy_to_torch(ctrl.env.reset(i)) for i in range(Ntest)]).to(ctrl.device) 
         _,_,test_rewards,_ = ctrl.env.integrate_system(T=int(Htest//ctrl.env.dt), s0=s0, g=ctrl._g)
         # get the rewards after 3 seconds to understand the pole never falls (reward must be >.9)
         true_test_rewards = test_rewards[...,Tup:].mean().item()
@@ -238,6 +239,7 @@ def dynamics_loss(ctrl, st, ts, at, g, L=1):
     lhood = lhood.sum() / L
     mse = sq_err.mean().item()
     return mse, lhood, st_hat, at_hat  # N,T,n
+
 def train_dynamics(ctrl, D, Niter=1000, verbose=True, H=10, N=-1, L=1, eta=1e-3, eta_final=2e-4, \
         save_every=50, save_fname=None, func_KL=False, lr_sch=False, kl_w=1, rep_buf=-1, temp_opt=True, \
         num_plots=0, opt='adam', print_times=10, rnode=False, stop_mse=1e-3, nrep=3):
@@ -429,7 +431,7 @@ def collect_data(env, H, N=1, sf=0.5, ell=0.5, D=None):
             print('Since N<1, data not collected!')
             return D
         T = int(H/env.dt)
-        s0 = torch.stack([numpy_to_torch(env.reset(), env.device) for _ in range(N)]) # N,n
+        s0 = torch.stack([numpy_to_torch(env.reset(i), env.device) for i in range(N)]) # N,n
         for i in range(N):
             g = build_policy(env,T)
             st,at,rt,ts = env.integrate_system(T, g, s0[i:i+1])
